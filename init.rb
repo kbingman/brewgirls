@@ -5,7 +5,9 @@ require 'bundler'
 
 Bundler.setup
 
+require 'sinatra/base'
 require 'monk/glue'
+
 # require 'ohm'
 require 'haml'
 require 'sass'   
