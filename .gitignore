@@ -1,0 +1,5 @@
+.bundle
+/config/settings.yml
+/tmp
+/webrat.log
+/vendor/webrat/vendor
