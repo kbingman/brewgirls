@@ -6,4 +6,10 @@
     %link{:rel => "stylesheet", :href => "/css/brewgirls.css", :type => "text/css"}
 
   %body
-    != yield
+    #container
+      #header
+        %h3 Bitch Kitty Racing Presents
+        %h1#title Brew Girls 2011
+        %h1#bkr BKR
+      #content
+        != yield

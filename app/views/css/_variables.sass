@@ -2,13 +2,11 @@
 
 $content-width: 37em
 
-$tint: #D3D4D8
-$base-color: $tint - #888
-$dark-tint: $tint - #333
-$background-tint: $tint + #222
+$tint: #555
+$base-color: $tint + #888
+$dark-tint: $tint + #333
+$background-tint: #1a1b18
 $border-color: $tint + #111
-
-$background-color: #111
 
 $h1-scale: 2.18
 $h2-scale: 1.64
@@ -22,7 +20,7 @@ $h4-scale: 1.18
 
 
 
-@mixin border-radius($radius)
+=border-radius($radius: 4px)
   -webkit-border-radius: $radius
   -moz-border-radius: $radius
   border-radius: $radius
