@@ -1,0 +1,42 @@
+body
+  font: $base-font "Helvetica Neue", arial, helvetica, sans-serif
+  line-height: $vertical-rhythm
+  color: $base-color
+
+h1, h2, h3, h4, h5, h6
+  font-family: "Helvetica Neue", arial, helvetica, sans-serif
+h1
+  @include adjust-font-size($h1-scale, 0.6, 0.4)
+  font-weight: normal
+h2
+  @include adjust-font-size($h2-scale, 1.5, 0.5)
+  font-weight: normal
+h3
+  @include adjust-font-size($h3-scale, 1.5, 0.5)
+  font-weight: normal
+h4
+  @include adjust-font-size($h4-scale, 2, 0)
+  
+ol,
+p,
+pre,
+ul
+  margin: 0
+  margin-bottom: $base-vertical-margin
+
+li
+  @include adjust-font-size(1, 0, 0)
+
+blockquote
+  margin: $base-vertical-margin 0
+  border-left: 0.5em solid $tint
+  padding-left: 1em
+
+  font-style: italic
+
+pre
+  padding: ($vertical-rhythm / 2) 1em
+  overflow: auto
+
+img
+  border: none
