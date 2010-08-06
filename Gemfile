@@ -3,7 +3,7 @@ source "http://rubygems.org"
 gem 'rack'
 gem 'sinatra'   
 gem 'thin' 
-gem 'monk-glue', :git => 'git://github.com/monkrb/glue.git'
+gem 'monk-glue' #, :git => 'git://github.com/monkrb/glue.git'
 # gem 'activesupport', :require => 'active_support'
 gem 'haml'
 gem 'maruku'
