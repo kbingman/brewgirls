@@ -7,6 +7,13 @@ class Main
     haml :'pages/home'
   end     
   
+  get '/assets/:name' do
+    response['Cache-Control'] = 'max-age=600, public'
+    @asset = params[:name]
+    haml :'pages/display'
+  end
+  
+  # This is a catchall for pages and must come last
   get '*' do
     @path = params[:splat]
     if File.exists? root_path("app/views/pages/#{@path}.haml")
