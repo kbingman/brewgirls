@@ -16,6 +16,7 @@
     :margin 0
     :font-family "MuseoSans_500"
     :color #777
+    :text-shadow 0 0 0 #777
   h1#title
     :position absolute
     :top 24px
@@ -24,6 +25,7 @@
     :font-size 4em
     :font-family "MuseoSans_100"
     :margin 0
+    :text-shadow 0 0 0 #ccc
   h1#bkr
     :position absolute
     :text-indent -10000px
@@ -32,8 +34,27 @@
     :right 0
     :height 130px
     :width 330px
-    :background url('/images/logo.png') no-repeat
+    a
+      :display block
+      :height 130px
+      :width 330px
+      :background url('/images/logo.png') no-repeat
     
 #content
+  +clearfix
   :padding 12px
+  
+#main
+  :width 504px
+  :float left
+  
+#sidebar
+  :width 408px
+  :float right
+  
+#footer
+  :clear both
+  :text-align right
+  :padding 12px 12px 0
+
     
