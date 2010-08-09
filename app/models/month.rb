@@ -9,7 +9,7 @@ class Month
     if MONTHS.include?(name)
       month = Month.new
       month.name = name
-      month.id = sprintf('%.2d', MONTHS.index(name) + 1)
+      month.id = MONTHS.index(name)
       month
     else
       nil
@@ -28,16 +28,20 @@ class Month
     self.name.split('-')[-1].capitalize
   end
   
+  def number
+    sprintf('%.2d', self.id + 1)
+  end
+  
   def path
     "/months/#{self.name}"
   end
   
   def display_path
-    "/display/#{self.id}-#{self.name}.jpg"
+    "/display/#{self.number}-#{self.name}.jpg"
   end
   
   def thumbnail_path
-    "/thumbnails/#{self.id}-#{self.name}.jpg"
+    "/thumbnails/#{self.number}-#{self.name}.jpg"
   end
   
   def body
