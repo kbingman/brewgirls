@@ -9,8 +9,13 @@ class Main
   get '/months/:name' do
     response['Cache-Control'] = 'max-age=600, public'
     @month = Month.find_by_name(params[:name])
-    @page_title = @month.title
-    haml :'pages/month'
+    unless @month.nil?
+      @page_title = @month.title
+      haml :'pages/month'
+    else
+      @path = params[:name]
+      haml :'pages/404'   
+    end
   end
   
   # This is a catchall for pages and must come last
