@@ -7,8 +7,7 @@
 	    $.ajax({
         url: url,
         success: function(results){
-          $('#content').html(results);
-          Site.sammify_links();
+          Site.load_images(results);
         }
       });
     });
@@ -18,11 +17,7 @@
       $.ajax({
         url: url,
         success: function(results){
-          $('#content').html(results).find('img').hide();
-          $('img').load(function(){
-            $(this).fadeIn('slow');
-          });
-          Site.sammify_links();
+          Site.load_images(results);
         }
       });
     });

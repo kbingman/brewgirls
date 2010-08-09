@@ -14,9 +14,9 @@
   
   %p  
     - unless @previous_month.nil? 
-      %a.sammy{ :href => @previous_month.path } Previous
+      %a.sammy.previous{ :href => @previous_month.path } Previous
       |
     %a.sammy{ :href => '/' } Back to index 
     - unless @next_month.nil? 
       |
-      %a.sammy{ :href => @next_month.path } Next
+      %a.sammy.next{ :href => @next_month.path } Next
