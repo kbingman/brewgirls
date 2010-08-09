@@ -2,15 +2,15 @@ class Main
   
   get '/' do
     response['Cache-Control'] = 'max-age=600, public'
-    @assets = ['01_january', '02_february', '03_march', '04_april', '05_may', '06_june',
-              '07_july', '08_august', '09_september', '10_october', '11_november', '12_december']
+    @months = Month.all
     haml :'pages/home'
   end     
   
-  get '/assets/:name' do
+  get '/months/:name' do
     response['Cache-Control'] = 'max-age=600, public'
-    @asset = params[:name]
-    haml :'pages/display'
+    @month = Month.find_by_name(params[:name])
+    @page_title = @month.title
+    haml :'pages/month'
   end
   
   # This is a catchall for pages and must come last
