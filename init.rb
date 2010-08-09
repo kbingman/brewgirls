@@ -11,6 +11,7 @@ require 'monk/glue'
 # require 'ohm'
 require 'haml'
 require 'sass'   
+require 'maruku'
 
 class Main < Monk::Glue
   set :app_file, __FILE__ 

@@ -40,4 +40,9 @@ class Month
     "/thumbnails/#{self.id}-#{self.name}.jpg"
   end
   
+  def body
+    text = File.read(root_path("app/views/text/#{name}.md")) rescue nil
+    text ? Maruku.new(text).to_html : nil
+  end
+  
 end
