@@ -11,14 +11,17 @@
 
   %body
     #container
+    
       #header
         %h3 Bitch Kitty Racing Presents
         %h1#title 
           %a{ :href => '/' } Brew Girls 2011
         %h1#bkr 
           %a{ :href => 'http://bitchkittyracing.com' } BKR
+          
       #content
         != yield
+        
       #footer
         %p
           © 2010 

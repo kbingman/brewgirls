@@ -1,14 +1,19 @@
 class Month
   
-  MONTHS = ['01-january', '02-february', '03-march', '04-april', '05-may', '06-june',
-            '07-july', '08-august', '09-september', '10-october', '11-november', '12-december']
+  MONTHS = ['january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december']
   
-  attr_accessor :name
+  attr_accessor :name, :id
   
   def self.find_by_name(name)
-    month = Month.new
-    month.name = name
-    month
+    if MONTHS.include?(name)
+      month = Month.new
+      month.name = name
+      month.id = sprintf('%.2d', MONTHS.index(name) + 1)
+      month
+    else
+      nil
+    end
   end
   
   def self.all
@@ -28,11 +33,11 @@ class Month
   end
   
   def display_path
-    "/display/#{self.name}.jpg"
+    "/display/#{self.id}-#{self.name}.jpg"
   end
   
   def thumbnail_path
-    "/thumbnails/#{self.name}.jpg"
+    "/thumbnails/#{self.id}-#{self.name}.jpg"
   end
   
 end
