@@ -30,7 +30,7 @@
   });
   
   $(function() {
-    main_controller.run('#');
+    main_controller.run('#/');
   });
   
 })(jQuery);

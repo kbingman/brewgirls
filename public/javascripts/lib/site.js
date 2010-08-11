@@ -5,7 +5,6 @@ var Site = {
       $(this).attr('href','#' + path);
     });
   },
-  
   load_images: function(results){
     $('#content').html(results).find('img').hide();
     $('img').load(function(){
