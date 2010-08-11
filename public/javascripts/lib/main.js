@@ -25,6 +25,7 @@
     this.bind('run', function() {
       var context = this;
       Site.sammify_links();
+      $('#main img').hide();
     });
 
   });
