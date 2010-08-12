@@ -2,30 +2,38 @@
   
   var main_controller = $.sammy(function() {
 	   
-	  this.get('#/', function(context) {
-	    var url = '/index.js';
-	    $.ajax({
-        url: url,
-        success: function(results){
-          Site.load_images(results);
-        }
+	  this.use(Sammy.Haml, 'haml');
+	  var assets = {}
+	  
+	  this.swap = function(content) {
+      $('#main').html(content).find('img').hide();
+      $('img').load(function(){
+        $(this).fadeIn('slow');
       });
+    };
+     
+	  this.get('#/', function(context) {
+	    // TODO this can be replaced with haml tempates and js, too  
+	    data = {};
+	    Site.get_keys(assets);
+	    data.keys = keys;
+	    data.assets = assets;
+  	  context.partial('/javascripts/views/thumbnails.haml', data);
     });
      
     this.get('#/months/:name', function(context) {
-      var url = '/months/' + this.params['name'] + '.js';
-      $.ajax({
-        url: url,
-        success: function(results){
-          Site.load_images(results);
-        }
-      });
+      // This way it doesn't touch the application, but grabs all the data
+      // from the page and uses haml to replace it
+      var name = this.params['name'];      
+      var data = assets[name];
+      context.partial('/javascripts/views/display.haml', data);
     });
     
     this.bind('run', function() {
       var context = this;
-      Site.sammify_links();
+      // Site.sammify_links();
       $('#main img').hide();
+      Site.fill_image_array(assets);
     });
 
   });
