@@ -6,11 +6,12 @@ var Site = {
   //   });
   // },
   pre_load_images: function() {
+    var cache = [];
     var args_len = arguments.length;
     for (var i = args_len; i--;) {
       var cache_image = document.createElement('img');
       cache_image.src = arguments[i];
-      cache.push(cacheImage);
+      cache.push(cache_image);
     }
   },
   fill_image_array: function(assets){

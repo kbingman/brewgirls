@@ -26,7 +26,9 @@
       var name = this.params['name'];      
       var data = assets[name];
       context.partial('/javascripts/views/display.haml', data);
-      pre_load_images(assets[name].next_path, assets[name].previous_path);
+      // Preloads the next and previous images
+      Site.pre_load_images(assets[name].next_path, assets[name].previous_path);
+      
     });
     
     this.bind('run', function(context) {
