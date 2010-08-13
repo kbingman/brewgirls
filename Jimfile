@@ -1,5 +1,6 @@
 // bundled_path: public/javascripts/bundled.js
 // compressed_path: public/javascripts/compressed.js
+// compressor: yui
 // vendor_dir: public/javascripts/vendor
 
 / start adding your requirements below:

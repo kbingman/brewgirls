@@ -5,13 +5,6 @@ var Site = {
   //     $(this).attr('href','#' + path);
   //   });
   // },
-  // load_images: function(results){
-  //   $('#content').html(results).find('img').hide();
-  //   $('img').load(function(){
-  //     $(this).fadeIn('slow');
-  //   });
-  //  // Site.sammify_links();
-  // }, 
   pre_load_images: function() {
     var args_len = arguments.length;
     for (var i = args_len; i--;) {

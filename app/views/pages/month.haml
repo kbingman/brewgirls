@@ -1,6 +1,13 @@
 #main
   %img{ :src => @month.display_path, :alt => @month.name }
-    
+  .info
+    - unless @previous_month.nil? 
+      %a.sammy.previous{ :href => @previous_month.path } Previous
+      |
+    %a.sammy{ :href => '/' } Back to index 
+    - unless @next_month.nil? 
+      |
+      %a.sammy.next{ :href => @next_month.path } Next
 #sidebar
   %h2= @month.title
   
@@ -12,11 +19,3 @@
     eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum 
     felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi.
   
-  %p  
-    - unless @previous_month.nil? 
-      %a.sammy.previous{ :href => @previous_month.path } Previous
-      |
-    %a.sammy{ :href => '/' } Back to index 
-    - unless @next_month.nil? 
-      |
-      %a.sammy.next{ :href => @next_month.path } Next

@@ -13,7 +13,7 @@
     };
      
 	  this.get('#/', function(context) {
-	    data = {};
+	    var data = {};
 	    Site.get_keys(assets);
 	    data.keys = keys;
 	    data.assets = assets;
@@ -29,9 +29,7 @@
       pre_load_images(assets[name].next_path, assets[name].previous_path);
     });
     
-    this.bind('run', function() {
-      var context = this;
-      // Site.sammify_links();
+    this.bind('run', function(context) {
       $('#main img').hide();
       Site.fill_image_array(assets);
     });
