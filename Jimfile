@@ -5,7 +5,6 @@
 / start adding your requirements below:
 
 jquery
-underscore
 sammy
 sammy.haml
 lib/main

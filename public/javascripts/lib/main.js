@@ -13,7 +13,6 @@
     };
      
 	  this.get('#/', function(context) {
-	    // TODO this can be replaced with haml tempates and js, too  
 	    data = {};
 	    Site.get_keys(assets);
 	    data.keys = keys;
@@ -27,6 +26,7 @@
       var name = this.params['name'];      
       var data = assets[name];
       context.partial('/javascripts/views/display.haml', data);
+      pre_load_images(assets[name].next_path, assets[name].previous_path);
     });
     
     this.bind('run', function() {

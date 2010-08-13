@@ -1,17 +1,25 @@
 var Site = {
-  sammify_links: function(){
-    $('a.sammy').each(function(){
-      var path = $(this).attr('href');
-      $(this).attr('href','#' + path);
-    });
+  // sammify_links: function(){
+  //   $('a.sammy').each(function(){
+  //     var path = $(this).attr('href');
+  //     $(this).attr('href','#' + path);
+  //   });
+  // },
+  // load_images: function(results){
+  //   $('#content').html(results).find('img').hide();
+  //   $('img').load(function(){
+  //     $(this).fadeIn('slow');
+  //   });
+  //  // Site.sammify_links();
+  // }, 
+  pre_load_images: function() {
+    var args_len = arguments.length;
+    for (var i = args_len; i--;) {
+      var cache_image = document.createElement('img');
+      cache_image.src = arguments[i];
+      cache.push(cacheImage);
+    }
   },
-  load_images: function(results){
-    $('#content').html(results).find('img').hide();
-    $('img').load(function(){
-      $(this).fadeIn('slow');
-    });
-    Site.sammify_links();
-  }, 
   fill_image_array: function(assets){
     $('.thumbnail').each(function(){
       var asset = $(this)
@@ -19,15 +27,22 @@ var Site = {
       var thumbnail = asset.find('img').attr('src');
       var path = thumbnail.replace('thumbnails','display');
       var title = asset.find('a').attr('title');
-      var next = asset.next().attr('id') || '';
-      var previous = asset.prev().attr('id') || '';
+      var next = asset.next();
+      var next_name = next.attr('id') || '';
+      var next_path = next.length > 0 ? next.find('img').attr('src').replace('thumbnails','display') : '';
+      var previous = asset.prev();
+      var previous_name = previous.attr('id') || '';
+      var previous_path = previous.length > 0 ? previous.find('img').attr('src').replace('thumbnails','display') : '';
       assets[name] = { 
         'name' : name, 
         'path' : path, 
         'thumbnail' : thumbnail,
         'title' : title, 
-        'next' : next, 
-        'previous': previous };
+        'next' : next_name, 
+        'next_path' : next_path,
+        'previous': previous_name,
+        'previous_path': next_path
+      };
     });
   },
   get_keys: function(assets){

@@ -6240,7 +6240,7 @@ window.jQuery = window.$ = jQuery;
 })(window);
 
 // name: sammy
-// version: 0.5.2
+// version: 0.6.0pre
 
 (function($) {
 
@@ -6248,10 +6248,19 @@ window.jQuery = window.$ = jQuery;
       PATH_REPLACER = "([^\/]+)",
       PATH_NAME_MATCHER = /:([\w\d]+)/g,
       QUERY_STRING_MATCHER = /\?([^#]*)$/,
+      // mainly for making `arguments` an Array
+      _makeArray = function(nonarray) { return Array.prototype.slice.call(nonarray); },
+      // borrowed from jQuery
+      _isFunction = function( obj ) { return Object.prototype.toString.call(obj) === "[object Function]"; },
+      _isArray = function( obj ) { return Object.prototype.toString.call(obj) === "[object Array]"; },
       _decode = decodeURIComponent,
+      _escapeHTML = function(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      },
       _routeWrapper = function(verb) {
         return function(path, callback) { return this.route.apply(this, [verb, path, callback]); };
       },
+      _template_cache = {},
       loggers = [];
 
 
@@ -6280,13 +6289,13 @@ window.jQuery = window.$ = jQuery;
   //      Sammy('#main', function() { ... });
   //
   Sammy = function() {
-    var args = $.makeArray(arguments),
+    var args = _makeArray(arguments),
         app, selector;
     Sammy.apps = Sammy.apps || {};
-    if (args.length === 0 || args[0] && $.isFunction(args[0])) { // Sammy()
+    if (args.length === 0 || args[0] && _isFunction(args[0])) { // Sammy()
       return Sammy.apply(Sammy, ['body'].concat(args));
     } else if (typeof (selector = args.shift()) == 'string') { // Sammy('#main')
-      app = Sammy.apps[selector] || new Sammy.Application();
+      app = Sammy.apps[selector] || new Sammy.Application(args.shift());
       app.element_selector = selector;
       if (args.length > 0) {
         $.each(args, function(i, plugin) {
@@ -6302,7 +6311,7 @@ window.jQuery = window.$ = jQuery;
     }
   };
 
-  Sammy.VERSION = '0.5.4';
+  Sammy.VERSION = '0.6.0pre';
 
   // Add to the global logger pool. Takes a function that accepts an
   // unknown number of arguments and should print them or send them somewhere
@@ -6315,7 +6324,7 @@ window.jQuery = window.$ = jQuery;
   // loggers pool. Can take any number of arguments.
   // Also prefixes the arguments with a timestamp.
   Sammy.log = function()  {
-    var args = $.makeArray(arguments);
+    var args = _makeArray(arguments);
     args.unshift("[" + Date() + "]");
     $.each(loggers, function(i, logger) {
       logger.apply(Sammy, args);
@@ -6323,7 +6332,7 @@ window.jQuery = window.$ = jQuery;
   };
 
   if (typeof window.console != 'undefined') {
-    if ($.isFunction(console.log.apply)) {
+    if (_isFunction(console.log.apply)) {
       Sammy.addLogger(function() {
         window.console.log.apply(console, arguments);
       });
@@ -6338,6 +6347,12 @@ window.jQuery = window.$ = jQuery;
     });
   }
 
+  $.extend(Sammy, {
+    makeArray: _makeArray,
+    isFunction: _isFunction,
+    isArray: _isArray
+  })
+
   // Sammy.Object is the base for all other Sammy classes. It provides some useful
   // functionality, including cloning, iterating, etc.
   Sammy.Object = function(obj) { // constructor
@@ -6346,11 +6361,16 @@ window.jQuery = window.$ = jQuery;
 
   $.extend(Sammy.Object.prototype, {
 
+    // Escape HTML in string, use in templates to prevent script injection.
+    // Also aliased as `h()`
+    escapeHTML: _escapeHTML,
+    h: _escapeHTML,
+
     // Returns a copy of the object with Functions removed.
     toHash: function() {
       var json = {};
       $.each(this, function(k,v) {
-        if (!$.isFunction(v)) {
+        if (!_isFunction(v)) {
           json[k] = v;
         }
       });
@@ -6367,7 +6387,7 @@ window.jQuery = window.$ = jQuery;
     toHTML: function() {
       var display = "";
       $.each(this, function(k, v) {
-        if (!$.isFunction(v)) {
+        if (!_isFunction(v)) {
           display += "<strong>" + k + "</strong> " + v + "<br />";
         }
       });
@@ -6379,7 +6399,7 @@ window.jQuery = window.$ = jQuery;
     keys: function(attributes_only) {
       var keys = [];
       for (var property in this) {
-        if (!$.isFunction(this[property]) || !attributes_only) {
+        if (!_isFunction(this[property]) || !attributes_only) {
           keys.push(property);
         }
       }
@@ -6394,7 +6414,7 @@ window.jQuery = window.$ = jQuery;
     // convenience method to join as many arguments as you want
     // by the first argument - useful for making paths
     join: function() {
-      var args = $.makeArray(arguments);
+      var args = _makeArray(arguments);
       var delimiter = args.shift();
       return args.join(delimiter);
     },
@@ -6410,7 +6430,7 @@ window.jQuery = window.$ = jQuery;
     toString: function(include_functions) {
       var s = [];
       $.each(this, function(k, v) {
-        if (!$.isFunction(v) || include_functions) {
+        if (!_isFunction(v) || include_functions) {
           s.push('"' + k + '": ' + v.toString());
         }
       });
@@ -6438,6 +6458,7 @@ window.jQuery = window.$ = jQuery;
   };
 
   Sammy.HashLocationProxy.prototype = {
+
     // bind the proxy events to the current app.
     bind: function() {
       var proxy = this, app = this.app;
@@ -6451,11 +6472,21 @@ window.jQuery = window.$ = jQuery;
         }
         app.trigger('location-changed');
       });
+      if (!Sammy.HashLocationProxy._bindings) {
+        Sammy.HashLocationProxy._bindings = 0;
+      }
+      Sammy.HashLocationProxy._bindings++;
     },
+
     // unbind the proxy events from the current app
     unbind: function() {
       $(window).unbind('hashchange.' + this.app.eventNamespace());
+      Sammy.HashLocationProxy._bindings--;
+      if (Sammy.HashLocationProxy._bindings <= 0) {
+        clearInterval(Sammy.HashLocationProxy._interval);
+      }
     },
+
     // get the current location from the hash.
     getLocation: function() {
      // Bypass the `window.location.hash` attribute.  If a question mark
@@ -6464,6 +6495,7 @@ window.jQuery = window.$ = jQuery;
       var matches = window.location.toString().match(/^[^#]*(#.+)$/);
       return matches ? matches[1] : '';
     },
+
     // set the current location to `new_location`
     setLocation: function(new_location) {
       return (window.location = new_location);
@@ -6480,57 +6512,16 @@ window.jQuery = window.$ = jQuery;
             current_location != Sammy.HashLocationProxy._last_location) {
             setTimeout(function() {
               $(window).trigger('hashchange', [true]);
-            }, 1);
+            }, 13);
           }
           Sammy.HashLocationProxy._last_location = current_location;
         };
         hashCheck();
         Sammy.HashLocationProxy._interval = setInterval(hashCheck, every);
-        $(window).bind('beforeunload', function() {
-          clearInterval(Sammy.HashLocationProxy._interval);
-        });
       }
     }
   };
 
-  // The DataLocationProxy is an optional location proxy prototype. As opposed to
-  // the `HashLocationProxy` it gets its location from a jQuery.data attribute
-  // tied to the application's element. You can set the name of the attribute by
-  // passing a string as the second argument to the constructor. The default attribute
-  // name is 'sammy-location'. To read more about location proxies, check out the
-  // documentation for `Sammy.HashLocationProxy`
-  Sammy.DataLocationProxy = function(app, data_name) {
-    this.app = app;
-    this.data_name = data_name || 'sammy-location';
-  };
-
-  Sammy.DataLocationProxy.prototype = {
-    bind: function() {
-      var proxy = this;
-      this.app.$element().bind('setData', function(e, key, value) {
-        if (key == proxy.data_name) {
-          // jQuery unfortunately fires the event before it sets the value
-          // work around it, by setting the value ourselves
-          proxy.app.$element().each(function() {
-            $.data(this, proxy.data_name, value);
-          });
-          proxy.app.trigger('location-changed');
-        }
-      });
-    },
-
-    unbind: function() {
-      this.app.$element().unbind('setData');
-    },
-
-    getLocation: function() {
-      return this.app.$element().data(this.data_name);
-    },
-
-    setLocation: function(new_location) {
-      return this.app.$element().data(this.data_name, new_location);
-    }
-  };
 
   // Sammy.Application is the Base prototype for defining 'applications'.
   // An 'application' is a collection of 'routes' and bound events that is
@@ -6547,12 +6538,12 @@ window.jQuery = window.$ = jQuery;
     this.context_prototype = function() { Sammy.EventContext.apply(this, arguments); };
     this.context_prototype.prototype = new Sammy.EventContext();
 
-    if ($.isFunction(app_function)) {
+    if (_isFunction(app_function)) {
       app_function.apply(this, [this]);
     }
     // set the location proxy if not defined to the default (HashLocationProxy)
-    if (!this.location_proxy) {
-      this.location_proxy = new Sammy.HashLocationProxy(app, this.run_interval_every);
+    if (!this._location_proxy) {
+      this.setLocationProxy(new Sammy.HashLocationProxy(this, this.run_interval_every));
     }
     if (this.debug) {
       this.bindToAllEvents(function(e, data) {
@@ -6571,6 +6562,7 @@ window.jQuery = window.$ = jQuery;
     APP_EVENTS: ['run','unload','lookup-route','run-route','route-found','event-context-before','event-context-after','changed','error','check-form-submission','redirect'],
 
     _last_route: null,
+    _location_proxy: null,
     _running: false,
 
     // Defines what element the application is bound to. Provide a selector
@@ -6586,12 +6578,6 @@ window.jQuery = window.$ = jQuery;
 
     // The time in milliseconds that the URL is queried for changes
     run_interval_every: 50,
-
-    // The location proxy for the current app. By default this is set to a new
-    // `Sammy.HashLocationProxy` on initialization. However, you can set
-    // the location_proxy inside you're app function to give youre app a custom
-    // location mechanism
-    location_proxy: null,
 
     // The default template engine to use when using `partial()` in an
     // `EventContext`. `template_engine` can either be a string that
@@ -6645,23 +6631,66 @@ window.jQuery = window.$ = jQuery;
     //
     //      });
     //
+    // If plugin is passed as a string it assumes your are trying to load
+    // Sammy."Plugin". This is the prefered way of loading core Sammy plugins
+    // as it allows for better error-messaging.
+    //
+    // ### Example
+    //
+    //      $.sammy(function() {
+    //        this.use('Mustache'); //=> Sammy.Mustache
+    //        this.use('Storage'); //=> Sammy.Storage
+    //      });
+    //
     use: function() {
       // flatten the arguments
-      var args = $.makeArray(arguments);
-      var plugin = args.shift();
+      var args = _makeArray(arguments),
+          plugin = args.shift(),
+          plugin_name = plugin || '';
       try {
         args.unshift(this);
+        if (typeof plugin == 'string') {
+          plugin_name = 'Sammy.' + plugin;
+          plugin = Sammy[plugin];
+        }
         plugin.apply(this, args);
       } catch(e) {
-        if (typeof plugin == 'undefined') {
-          this.error("Plugin Error: called use() but plugin is not defined", e);
-        } else if (!$.isFunction(plugin)) {
-          this.error("Plugin Error: called use() but '" + plugin.toString() + "' is not a function", e);
+        if (typeof plugin === 'undefined') {
+          this.error("Plugin Error: called use() but plugin (" + plugin_name.toString() + ") is not defined", e);
+        } else if (!_isFunction(plugin)) {
+          this.error("Plugin Error: called use() but '" + plugin_name.toString() + "' is not a function", e);
         } else {
           this.error("Plugin Error", e);
         }
       }
       return this;
+    },
+
+    // Sets the location proxy for the current app. By default this is set to
+    // a new `Sammy.HashLocationProxy` on initialization. However, you can set
+    // the location_proxy inside you're app function to give your app a custom
+    // location mechanism. See `Sammy.HashLocationProxy` and `Sammy.DataLocationProxy`
+    // for examples.
+    //
+    // `setLocationProxy()` takes an initialized location proxy.
+    //
+    // ### Example
+    //
+    //        // to bind to data instead of the default hash;
+    //        var app = $.sammy(function() {
+    //          this.setLocationProxy(new Sammy.DataLocationProxy(this));
+    //        });
+    //
+    setLocationProxy: function(new_proxy) {
+      var original_proxy = this._location_proxy;
+      this._location_proxy = new_proxy;
+      if (this.isRunning()) {
+        if (original_proxy) {
+          // if there is already a location proxy, unbind it.
+          original_proxy.unbind();
+        }
+        this._location_proxy.bind();
+      }
     },
 
     // `route()` is the main method for defining routes within an application.
@@ -6685,7 +6714,7 @@ window.jQuery = window.$ = jQuery;
 
       // if the method signature is just (path, callback)
       // assume the verb is 'any'
-      if (!callback && $.isFunction(path)) {
+      if (!callback && _isFunction(path)) {
         path = verb;
         callback = path;
         verb = 'any';
@@ -6873,7 +6902,7 @@ window.jQuery = window.$ = jQuery;
     // See `contextMatchesOptions()` for a full list of supported options
     //
     before: function(options, callback) {
-      if ($.isFunction(options)) {
+      if (_isFunction(options)) {
         callback = options;
         options = {};
       }
@@ -6935,7 +6964,7 @@ window.jQuery = window.$ = jQuery;
       return this;
     },
 
-    // Returns a boolean of weather the current application is running.
+    // Returns `true` if the current application is running.
     isRunning: function() {
       return this._running;
     },
@@ -7035,7 +7064,7 @@ window.jQuery = window.$ = jQuery;
       }
       // check url
       this._checkLocation();
-      this.location_proxy.bind();
+      this._location_proxy.bind();
       this.bind('location-changed', function() {
         app._checkLocation();
       });
@@ -7063,7 +7092,7 @@ window.jQuery = window.$ = jQuery;
       var app = this;
       this.trigger('unload');
       // clear interval
-      this.location_proxy.unbind();
+      this._location_proxy.unbind();
       // unbind form submits
       this.$element().unbind('submit').removeClass(app.eventNamespace());
       // unbind all events
@@ -7254,7 +7283,7 @@ window.jQuery = window.$ = jQuery;
         positive = true;
       }
       // normalize options
-      if (typeof options === 'string' || $.isFunction(options.test)) {
+      if (typeof options === 'string' || _isFunction(options.test)) {
         options = {path: options};
       }
       if (options.only) {
@@ -7265,7 +7294,7 @@ window.jQuery = window.$ = jQuery;
       var path_matched = true, verb_matched = true;
       if (options.path) {
         // wierd regexp test
-        if ($.isFunction(options.path.test)) {
+        if (_isFunction(options.path.test)) {
           path_matched = options.path.test(context.path);
         } else {
           path_matched = (options.path.toString() === context.path);
@@ -7281,7 +7310,7 @@ window.jQuery = window.$ = jQuery;
     // Delegates to the `location_proxy` to get the current location.
     // See `Sammy.HashLocationProxy` for more info on location proxies.
     getLocation: function() {
-      return this.location_proxy.getLocation();
+      return this._location_proxy.getLocation();
     },
 
     // Delegates to the `location_proxy` to set the current location.
@@ -7292,7 +7321,7 @@ window.jQuery = window.$ = jQuery;
     // * `new_location` A new location string (e.g. '#/')
     //
     setLocation: function(new_location) {
-      return this.location_proxy.setLocation(new_location);
+      return this._location_proxy.setLocation(new_location);
     },
 
     // Swaps the content of `$element()` with `content`
@@ -7316,6 +7345,17 @@ window.jQuery = window.$ = jQuery;
     //
     swap: function(content) {
       return this.$element().html(content);
+    },
+
+    // a simple global cache for templates. Uses the same semantics as
+    // `Sammy.Cache` and `Sammy.Storage` so can easily be replaced with
+    // a persistant storage that lasts beyond the current request.
+    templateCache: function(key, value) {
+      if (typeof value != 'undefined') {
+        return _template_cache[key] = value;
+      } else {
+        return _template_cache[key];
+      }
     },
 
     // This thows a '404 Not Found' error by invoking `error()`.
@@ -7401,7 +7441,7 @@ window.jQuery = window.$ = jQuery;
 
     _parseParamPair: function(params, key, value) {
       if (params[key]) {
-        if ($.isArray(params[key])) {
+        if (_isArray(params[key])) {
           params[key].push(value);
         } else {
           params[key] = [params[key], value];
@@ -7422,23 +7462,300 @@ window.jQuery = window.$ = jQuery;
 
   });
 
+  // `Sammy.RenderContext` is an object that makes sequential template loading,
+  // rendering and interpolation seamless even when dealing with asyncronous
+  // operations.
+  //
+  // `RenderContext` objects are not usually created directly, rather they are
+  // instatiated from an `Sammy.EventContext` by using `render()`, `load()` or
+  // `partial()` which all return `RenderContext` objects.
+  //
+  // `RenderContext` methods always returns a modified `RenderContext`
+  // for chaining (like jQuery itself).
+  //
+  // The core magic is in the `then()` method which puts the callback passed as
+  // an argument into a queue to be executed once the previous callback is complete.
+  // All the methods of `RenderContext` are wrapped in `then()` which allows you
+  // to queue up methods by chaining, but maintaing a guarunteed execution order
+  // even with remote calls to fetch templates.
+  //
+  Sammy.RenderContext = function(event_context) {
+    this.event_context    = event_context;
+    this.callbacks        = [];
+    this.previous_content = null;
+    this.content          = null;
+    this.next_engine      = false;
+    this.waiting          = false;
+  };
+
+  $.extend(Sammy.RenderContext.prototype, {
+
+    // The "core" of the `RenderContext` object, adds the `callback` to the
+    // queue. If the context is `waiting` (meaning an async operation is happening)
+    // then the callback will be executed in order, once the other operations are
+    // complete. If there is no currently executing operation, the `callback`
+    // is executed immediately.
+    //
+    // The value returned from the callback is stored in `content` for the
+    // subsiquent operation. If you return `false`, the queue will pause, and
+    // the next callback in the queue will not be executed until `next()` is
+    // called. This allows for the guarunteed order of execution while working
+    // with async operations.
+    //
+    // ### Example
+    //
+    //      this.get('#/', function() {
+    //        // initialize the RenderContext
+    //        // Even though `load()` executes async, the next `then()`
+    //        // wont execute until the load finishes
+    //        this.load('myfile.txt')
+    //            .then(function(content) {
+    //              // the first argument to then is the content of the
+    //              // prev operation
+    //              $('#main').html(content);
+    //            });
+    //      });
+    //
+    then: function(callback) {
+      if (_isFunction(callback)) {
+        var context = this;
+        if (this.waiting) {
+          this.callbacks.push(callback);
+        } else {
+          this.wait();
+          setTimeout(function() {
+            var returned = callback.apply(context, [context.content, context.previous_content]);
+            if (returned !== false) {
+              context.next(returned);
+            }
+          }, 13);
+        }
+      }
+      return this;
+    },
+
+    // Pause the `RenderContext` queue. Combined with `next()` allows for async
+    // operations.
+    //
+    // ### Example
+    //
+    //        this.get('#/', function() {
+    //          this.load('mytext.json')
+    //              .then(function(content) {
+    //                var context = this,
+    //                    data    = JSON.parse(content);
+    //                // pause execution
+    //                context.wait();
+    //                // post to a url
+    //                $.post(data.url, {}, function(response) {
+    //                  context.next(JSON.parse(response));
+    //                });
+    //              })
+    //              .then(function(data) {
+    //                // data is json from the previous post
+    //                $('#message').text(data.status);
+    //              });
+    //        });
+    wait: function() {
+      this.waiting = true;
+    },
+
+    // Resume the queue, setting `content` to be used in the next operation.
+    // See `wait()` for an example.
+    next: function(content) {
+      this.waiting = false;
+      if (typeof content !== 'undefined') {
+        this.previous_content = this.content;
+        this.content = content;
+      }
+      if (this.callbacks.length > 0) {
+        this.then(this.callbacks.shift());
+      }
+    },
+
+    // Load a template into the context.
+    // The `location` can either be a string specifiying the remote path to the
+    // file, a jQuery object, or a DOM element.
+    //
+    // No interpolation happens by default, the content is stored in
+    // `content`.
+    //
+    // In the case of a path, unless the option `{cache: false}` is passed the
+    // data is stored in the app's `templateCache()`.
+    //
+    // If a jQuery or DOM object is passed the `innerHTML` of the node is pulled in.
+    // This is useful for nesting templates as part of the initial page load wrapped
+    // in invisible elements or `<script>` tags. With template paths, the template
+    // engine is looked up by the extension. For DOM/jQuery embedded templates,
+    // this isnt possible, so there are a couple of options:
+    //
+    //  * pass an `{engine:}` option.
+    //  * define the engine in the `data-engine` attribute of the passed node.
+    //  * just store the raw template data and use `interpolate()` manually
+    //
+    // If a `callback` is passed it is executed after the template load.
+    load: function(location, options, callback) {
+      var context = this;
+      return this.then(function() {
+        var should_cache, cached;
+        if (_isFunction(options)) {
+          callback = options;
+          options = {};
+        } else {
+          options = $.extend({}, options);
+        }
+        if (callback) { this.then(callback); }
+        if (typeof location === 'string') {
+          // its a path
+          should_cache = !(options.cache === false);
+          delete options.cache;
+          if (options.engine) {
+            context.next_engine = options.engine;
+            delete options.engine;
+          }
+          if (should_cache && (cached = this.event_context.app.templateCache(location))) {
+            return cached;
+          }
+          this.wait();
+          $.ajax($.extend({
+            url: location,
+            data: {},
+            type: 'get',
+            success: function(data) {
+              if (should_cache) {
+                context.event_context.app.templateCache(location, data);
+              }
+              context.next(data);
+            }
+          }, options));
+          return false;
+        } else {
+          // its a dom/jQuery
+          if (location.nodeType) {
+            return location.innerHTML;
+          }
+          if (location.selector) {
+            // its a jQuery
+            context.next_engine = location.attr('data-engine');
+            if (options.clone === false) {
+              return location.remove()[0].innerHTML.toString();
+            } else {
+              return location[0].innerHTML.toString();
+            }
+          }
+        }
+      });
+    },
+
+    // `load()` a template and then `interpolate()` it with data.
+    //
+    // ### Example
+    //
+    //      this.get('#/', function() {
+    //        this.render('mytemplate.template', {name: 'test'});
+    //      });
+    //
+    render: function(location, data, callback) {
+      if (_isFunction(location) && !data) {
+        return this.then(location);
+      } else {
+        return this.load(location).interpolate(data, location).then(callback);
+      }
+    },
+
+    // itterates over an array, applying the callback for each item item. the
+    // callback takes the same style of arguments as `jQuery.each()` (index, item).
+    // The return value of each callback is collected as a single string and stored
+    // as `content` to be used in the next iteration of the `RenderContext`.
+    collect: function(array, callback) {
+      var context = this;
+      return this.then(function() {
+        var contents = "";
+        $.each(array, function(i, item) {
+          var returned = callback.apply(context, [i, item]);
+          contents += returned;
+          return returned;
+        });
+        return contents;
+      });
+    },
+
+    // loads a template, and then interpolates it for each item in the `data`
+    // array.
+    renderEach: function(location, name, data, callback) {
+      if (_isArray(name)) {
+        callback = data;
+        data = name;
+        name = null;
+      }
+      if (!data && _isArray(this.content)) { 
+        data = this.content;
+      }
+      return this.load(location).collect(data, function(i, value) {
+        var idata = {};
+        name ? (idata[name] = value) : (idata = value);
+        return this.event_context.interpolate(this.content, idata, location);
+      });
+    },
+
+    // uses the previous loaded `content` and the `data` object to interpolate
+    // a template. `engine` defines the templating/interpolation method/engine
+    // that should be used. If `engine` is not passed, the `next_engine` is
+    // used. If `retain` is `true`, the final interpolated data is appended to
+    // the `previous_content` instead of just replacing it.
+    interpolate: function(data, engine, retain) {
+      var context = this;
+      return this.then(function(content, prev) {
+        if (this.next_engine) {
+          engine = this.next_engine;
+          this.next_engine = false;
+        }
+        var rendered = context.event_context.interpolate(content, data, engine);
+        return retain ? prev + rendered : rendered;
+      });
+    },
+
+    // executes `EventContext#swap()` with the `content`
+    swap: function() {
+      return this.then(function(content) {
+        this.event_context.swap(content);
+      });
+    },
+
+    // Same usage as `jQuery.fn.appendTo()` but uses `then()` to ensure order
+    appendTo: function(selector) {
+      return this.then(function(content) {
+        $(selector).append(content);
+      });
+    },
+
+    // Replaces the `$(selector)` using `html()` with the previously loaded
+    // `content`
+    replace: function(selector) {
+      return this.then(function(content) {
+        $(selector).html(content);
+      });
+    }
+
+  });
+
   // `Sammy.EventContext` objects are created every time a route is run or a
   // bound event is triggered. The callbacks for these events are evaluated within a `Sammy.EventContext`
   // This within these callbacks the special methods of `EventContext` are available.
   //
   // ### Example
   //
-  //  $.sammy(function() { with(this) {
+  //  $.sammy(function() {
   //    // The context here is this Sammy.Application
-  //    get('#/:name', function() { with(this) {
+  //    this.get('#/:name', function() {
   //      // The context here is a new Sammy.EventContext
-  //      if (params['name'] == 'sammy') {
-  //        partial('name.html.erb', {name: 'Sammy'});
+  //      if (this.params['name'] == 'sammy') {
+  //        this.partial('name.html.erb', {name: 'Sammy'});
   //      } else {
-  //        redirect('#/somewhere-else')
+  //        this.redirect('#/somewhere-else')
   //      }
-  //    }});
-  //  }});
+  //    });
+  //  });
   //
   // Initialize a new EventContext
   //
@@ -7468,107 +7785,69 @@ window.jQuery = window.$ = jQuery;
       return this.app.$element();
     },
 
-    // Used for rendering remote templates or documents within the current application/DOM.
-    // By default Sammy and `partial()` know nothing about how your templates
-    // should be interpeted/rendered. This is easy to change, though. `partial()` looks
-    // for a method in `EventContext` that matches the extension of the file you're
-    // fetching (e.g. 'myfile.template' will look for a template() method, 'myfile.haml' => haml(), etc.)
-    // If no matching render method is found it just takes the file contents as is.
+    // Look up a templating engine within the current app and context.
+    // `engine` can be one of the following:
     //
-    // If you're templates have different (or no) extensions, and you want to render them all
-    // through the same engine, you can set the default/fallback template engine on the app level
-    // by setting `app.template_engine` to the name of the engine or a `function() {}`
+    // * a function: should conform to `function(content, data) { return interploated; }`
+    // * a template path: 'template.ejs', looks up the extension to match to
+    //   the `ejs()` helper
+    // * a string referering to the helper: "mustache" => `mustache()`
     //
-    // ### Caching
+    // If no engine is found, use the app's default `template_engine`
     //
-    // If you use the `Sammy.Cache` plugin, remote requests will be automatically cached unless
-    // you explicitly set `cache_partials` to `false`
+    engineFor: function(engine) {
+      var context = this, engine_match;
+      // if path is actually an engine function just return it
+      if (_isFunction(engine)) { return engine; }
+      // lookup engine name by path extension
+      engine = engine.toString();
+      if ((engine_match = engine.match(/\.([^\.]+)$/))) {
+        engine = engine_match[1];
+      }
+      // set the engine to the default template engine if no match is found
+      if (engine && _isFunction(context[engine])) {
+        return context[engine];
+      }
+      if (context.app.template_engine) {
+        return this.engineFor(context.app.template_engine);
+      }
+      return function(content, data) { return content; };
+    },
+
+    // using the template `engine` found with `engineFor()`, interpolate the
+    // `data` into `content`
+    interpolate: function(content, data, engine) {
+      return this.engineFor(engine).apply(this, [content, data]);
+    },
+
+    // Create and return a `Sammy.RenderContext` calling `render()` on it.
+    // Loads the template and interpolate the data, however does not actual
+    // place it in the DOM.
     //
     // ### Example
     //
-    // There are a couple different ways to use `partial()`:
+    //      // mytemplate.mustache <div class="name">{{name}}</div>
+    //      render('mytemplate.mustache', {name: 'quirkey'});
+    //      // sets the `content` to <div class="name">quirkey</div>
+    //      render('mytemplate.mustache', {name: 'quirkey'})
+    //        .appendTo('ul');
+    //      // appends the rendered content to $('ul')
     //
-    //      partial('doc.html');
-    //      //=> Replaces $element() with the contents of doc.html
-    //
-    //      use(Sammy.Template);
-    //      //=> includes the template() method
-    //      partial('doc.template', {name: 'Sammy'});
-    //      //=> Replaces $element() with the contents of doc.template run through `template()`
-    //
-    //      partial('doc.html', function(data) {
-    //        // data is the contents of the template.
-    //        $('.other-selector').html(data);
-    //      });
-    //
-    // ### Iteration/Arrays
-    //
-    // If the data object passed to `partial()` is an Array, `partial()`
-    // will itterate over each element in data calling the callback with the
-    // results of interpolation and the index of the element in the array.
-    //
-    //    use(Sammy.Template);
-    //    // item.template => "<li>I'm an item named <%= name %></li>"
-    //    partial('item.template', [{name: "Item 1"}, {name: "Item 2"}])
-    //    //=> Replaces $element() with:
-    //    // <li>I'm an item named Item 1</li><li>I'm an item named Item 2</li>
-    //    partial('item.template', [{name: "Item 1"}, {name: "Item 2"}], function(rendered, i) {
-    //      rendered; //=> <li>I'm an item named Item 1</li> // for each element in the Array
-    //      i; // the 0 based index of the itteration
-    //    });
-    //
-    partial: function(path, data, callback) {
-      var file_data,
-          wrapped_callback,
-          engine,
-          data_array,
-          cache_key = 'partial:' + path,
-          context = this;
+    render: function(location, data, callback) {
+      return new Sammy.RenderContext(this).render(location, data, callback);
+    },
 
-      // engine setup
-      if ((engine = path.match(/\.([^\.]+)$/))) { engine = engine[1]; }
-      // set the engine to the default template engine if no match is found
-      if ((!engine || !$.isFunction(context[engine])) && this.app.template_engine) {
-        engine = this.app.template_engine;
-      }
-      if (engine && !$.isFunction(engine) && $.isFunction(context[engine])) {
-        engine = context[engine];
-      }
-      if (!callback && $.isFunction(data)) {
-        // callback is in the data position
-        callback = data;
-        data = {};
-      }
-      data_array = ($.isArray(data) ? data : [data || {}]);
-      wrapped_callback = function(response) {
-        var new_content = response,
-            all_content =  "";
-        $.each(data_array, function(i, idata) {
-          if ($.isFunction(engine)) {
-            new_content = engine.apply(context, [response, idata]);
-          }
-          // collect the content
-          all_content += new_content;
-          // if callback exists call it for each iteration
-          if (callback) {
-            // return the result of the callback
-            // (you can bail the loop by returning false)
-            return callback.apply(context, [new_content, i]);
-          }
-        });
-        if (!callback) { context.swap(all_content); }
-        context.trigger('changed');
-      };
-      if (this.app.cache_partials && this.cache(cache_key)) {
-        // try to load the template from the cache
-        wrapped_callback.apply(context, [this.cache(cache_key)]);
-      } else {
-        // the template wasnt cached, we need to fetch it
-        $.get(path, function(response) {
-          if (context.app.cache_partials) { context.cache(cache_key, response); }
-          wrapped_callback.apply(context, [response]);
-        });
-      }
+    // create a new `Sammy.RenderContext` calling `load()` with `location` and
+    // `options`. Called without interpolation or placement, this allows for
+    // preloading/caching the templates.
+    load: function(location, options, callback) {
+      return new Sammy.RenderContext(this).load(location, options, callback);
+    },
+
+    // `render()` the the `location` with `data` and then `swap()` the
+    // app's `$element` with the rendered content.
+    partial: function(location, data) {
+      return this.render(location, data).swap();
     },
 
     // Changes the location of the current window. If `to` begins with
@@ -7582,7 +7861,7 @@ window.jQuery = window.$ = jQuery;
     //      redirect('#', 'other', 'route');
     //
     redirect: function() {
-      var to, args = $.makeArray(arguments),
+      var to, args = _makeArray(arguments),
           current_location = this.app.getLocation();
       if (args.length > 1) {
         args.unshift('/');
@@ -7632,3 +7911,653 @@ window.jQuery = window.$ = jQuery;
 
 })(jQuery);
 
+(function($) {
+
+  /*
+    port of http://github.com/creationix/haml-js
+    version v0.2.2 - 2010-04-05
+    by Tim Caswell <tim@creationix.com>
+  */
+
+  var matchers, self_close_tags, embedder;
+
+  function html_escape(text) {
+    return (text + "").
+      replace(/&/g, "&amp;").
+      replace(/</g, "&lt;").
+      replace(/>/g, "&gt;").
+      replace(/\"/g, "&quot;");
+  }
+
+  function render_attribs(attribs) {
+    var key, value, result = [];
+    for (key in attribs) {
+      if (key !== 'content' && attribs.hasOwnProperty(key)) {
+        switch (attribs[key]) {
+        case 'undefined':
+        case 'false':
+        case 'null':
+        case '""':
+          break;
+        default:
+          try {
+            value = JSON.parse("[" + attribs[key] +"]")[0];
+            if (value === true) {
+              value = key;
+            } else if (typeof value === 'string' && embedder.test(value)) {
+              value = '" +\n' + parse_interpol(html_escape(value)) + ' +\n"';
+            } else {
+              value = html_escape(value);
+            }
+            result.push(" " + key + '=\\"' + value + '\\"');
+          } catch (e) {
+            result.push(" " + key + '=\\"" + html_escape(' + attribs[key] + ') + "\\"');
+          }
+        }
+      }
+    }
+    return result.join("");
+  }
+
+  // Parse the attribute block using a state machine
+  function parse_attribs(line) {
+    var attributes = {},
+        l = line.length,
+        i, c,
+        count = 1,
+        quote = false,
+        skip = false,
+        open, close, joiner, seperator,
+        pair = {
+          start: 1,
+          middle: null,
+          end: null
+        };
+
+    if (!(l > 0 && (line.charAt(0) === '{' || line.charAt(0) === '('))) {
+      return {
+        content: line[0] === ' ' ? line.substr(1, l) : line
+      };
+    }
+    open = line.charAt(0);
+    close = (open === '{') ? '}' : ')';
+    joiner = (open === '{') ? ':' : '=';
+    seperator = (open === '{') ? ',' : ' ';
+
+    function process_pair() {
+      if (typeof pair.start === 'number' &&
+          typeof pair.middle === 'number' &&
+          typeof pair.end === 'number') {
+        var key = line.substr(pair.start, pair.middle - pair.start).trim(),
+            value = line.substr(pair.middle + 1, pair.end - pair.middle - 1).trim();
+        attributes[key] = value;
+      }
+      pair = {
+        start: null,
+        middle: null,
+        end: null
+      };
+    }
+
+    for (i = 1; count > 0; i += 1) {
+
+      // If we reach the end of the line, then there is a problem
+      if (i > l) {
+        throw "Malformed attribute block";
+      }
+
+      c = line.charAt(i);
+      if (skip) {
+        skip = false;
+      } else {
+        if (quote) {
+          if (c === '\\') {
+            skip = true;
+          }
+          if (c === quote) {
+            quote = false;
+          }
+        } else {
+          if (c === '"' || c === "'") {
+            quote = c;
+          }
+
+          if (count === 1) {
+            if (c === joiner) {
+              pair.middle = i;
+            }
+            if (c === seperator || c === close) {
+              pair.end = i;
+              process_pair();
+              if (c === seperator) {
+                pair.start = i + 1;
+              }
+            }
+          }
+
+          if (c === open) {
+            count += 1;
+          }
+          if (c === close) {
+            count -= 1;
+          }
+        }
+      }
+    }
+    attributes.content = line.substr(i, line.length);
+    return attributes;
+  }
+
+  // Split interpolated strings into an array of literals and code fragments.
+  function parse_interpol(value) {
+    var items = [],
+        pos = 0,
+        next = 0,
+        match;
+    while (true) {
+      // Match up to embedded string
+      next = value.substr(pos).search(embedder);
+      if (next < 0) {
+        if (pos < value.length) {
+          items.push(JSON.stringify(value.substr(pos)));
+        }
+        break;
+      }
+      items.push(JSON.stringify(value.substr(pos, next)));
+      pos += next;
+
+      // Match embedded string
+      match = value.substr(pos).match(embedder);
+      next = match[0].length;
+      if (next < 0) { break; }
+      items.push(match[1] || match[2]);
+      pos += next;
+    }
+    return items.filter(function (part) { return part && part.length > 0}).join(" +\n");
+  }
+
+  // Used to find embedded code in interpolated strings.
+  embedder = /\#\{([^}]*)\}/;
+
+  self_close_tags = ["meta", "img", "link", "br", "hr", "input", "area", "base"];
+
+  // All matchers' regexps should capture leading whitespace in first capture
+  // and trailing content in last capture
+  matchers = [
+    // html tags
+    {
+      regexp: /^(\s*)((?:[.#%][a-z_\-][a-z0-9_\-]*)+)(.*)$/i,
+      process: function () {
+        var tag, classes, ids, attribs, content;
+        tag = this.matches[2];
+        classes = tag.match(/\.([a-z_\-][a-z0-9_\-]*)/gi);
+        ids = tag.match(/\#([a-z_\-][a-z0-9_\-]*)/gi);
+        tag = tag.match(/\%([a-z_\-][a-z0-9_\-]*)/gi);
+
+        // Default to <div> tag
+        tag = tag ? tag[0].substr(1, tag[0].length) : 'div';
+
+        attribs = this.matches[3];
+        if (attribs) {
+          attribs = parse_attribs(attribs);
+          if (attribs.content) {
+            this.contents.unshift(attribs.content.trim());
+            delete(attribs.content);
+          }
+        } else {
+          attribs = {};
+        }
+
+        if (classes) {
+          classes = classes.map(function (klass) {
+            return klass.substr(1, klass.length);
+          }).join(' ');
+          if (attribs['class']) {
+            try {
+              attribs['class'] = JSON.stringify(classes + " " + JSON.parse(attribs['class']));
+            } catch (e) {
+              attribs['class'] = JSON.stringify(classes + " ") + " + " + attribs['class'];
+            }
+          } else {
+            attribs['class'] = JSON.stringify(classes);
+          }
+        }
+        if (ids) {
+          ids = ids.map(function (id) {
+            return id.substr(1, id.length);
+          }).join(' ');
+          if (attribs.id) {
+            attribs.id = JSON.stringify(ids + " ") + attribs.id;
+          } else {
+            attribs.id = JSON.stringify(ids);
+          }
+        }
+
+        attribs = render_attribs(attribs);
+
+        content = this.render_contents();
+        if (content === '""') {
+          content = '';
+        }
+
+        if (self_close_tags.indexOf(tag) == -1) {
+          return '"<' + tag + attribs + '>"' +
+            (content.length > 0 ? ' + \n' + content : "") +
+            ' + \n"</' + tag + '>"';
+        } else {
+          return '"<' + tag + attribs + ' />"';
+        }
+      }
+    },
+
+    // each loops
+    {
+      regexp: /^(\s*)(?::for|:each)\s+(?:([a-z_][a-z_\-]*),\s*)?([a-z_][a-z_\-]*)\s+in\s+(.*)(\s*)$/i,
+      process: function () {
+        var ivar = this.matches[2] || '__key__', // index
+            vvar = this.matches[3],              // value
+            avar = this.matches[4],              // array
+            rvar = '__result__';                 // results
+
+        if (this.matches[5]) {
+          this.contents.unshift(this.matches[5]);
+        }
+        return '(function () { ' +
+          'var ' + rvar + ' = [], ' + ivar + ', ' + vvar + '; ' +
+          'for (' + ivar + ' in ' + avar + ') { ' +
+          'if (' + avar + '.hasOwnProperty(' + ivar + ')) { ' +
+          vvar + ' = ' + avar + '[' + ivar + ']; ' +
+          rvar + '.push(\n' + (this.render_contents() || "''") + '\n); ' +
+          '} } return ' + rvar + '.join(""); }).call(this)';
+      }
+    },
+
+    // if statements
+    {
+      regexp: /^(\s*):if\s+(.*)\s*$/i,
+      process: function () {
+        var condition = this.matches[2];
+        return '(function () { ' +
+          'if (' + condition + ') { ' +
+          'return (\n' + (this.render_contents() || '') + '\n);' +
+          '} else { return ""; } }).call(this)';
+      }
+    },
+
+    // declarations
+    {
+      regexp: /^()!!!(?:\s*(.*))\s*$/,
+      process: function () {
+        var line = '';
+        switch ((this.matches[2] || '').toLowerCase()) {
+        case '':
+          // XHTML 1.0 Transitional
+          line = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">';
+          break;
+        case 'strict':
+        case '1.0':
+          // XHTML 1.0 Strict
+          line = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">';
+          break;
+        case 'frameset':
+          // XHTML 1.0 Frameset
+          line = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">';
+          break;
+        case '5':
+          // XHTML 5
+          line = '<!DOCTYPE html>';
+          break;
+        case '1.1':
+          // XHTML 1.1
+          line = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">';
+          break;
+        case 'basic':
+          // XHTML Basic 1.1
+          line = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.1//EN" "http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd">';
+          break;
+        case 'mobile':
+          // XHTML Mobile 1.2
+          line = '<!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.2//EN" "http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">';
+          break;
+        case 'xml':
+          // XML
+          line = "<?xml version='1.0' encoding='utf-8' ?>";
+          break;
+        case 'xml iso-8859-1':
+          // XML iso-8859-1
+          line = "<?xml version='1.0' encoding='iso-8859-1' ?>";
+          break;
+        }
+        return JSON.stringify(line + "\n");
+      }
+    },
+
+    // Embedded markdown. Needs to be added to exports externally.
+    {
+      regexp: /^(\s*):markdown\s*$/i,
+      process: function () {
+        return parse_interpol(exports.Markdown.encode(this.contents.join("\n")));
+      }
+    },
+
+    // script blocks
+    {
+      regexp: /^(\s*):(?:java)?script\s*$/,
+      process: function () {
+        return parse_interpol('\n<script type="text/javascript">\n' +
+          '//<![CDATA[\n' +
+          this.contents.join("\n") +
+          "\n//]]>\n</script>\n");
+      }
+    },
+
+    // css blocks
+    {
+      regexp: /^(\s*):css\s*$/,
+      process: function () {
+        return JSON.stringify('\n<style type="text/css">\n' +
+          this.contents.join("\n") +
+          "\n</style>\n");
+      }
+    }
+
+  ];
+
+  function compile(lines) {
+    var block = false,
+        output = [];
+
+    // If lines is a string, turn it into an array
+    if (typeof lines === 'string') {
+      lines = lines.trim().split("\n");
+    }
+
+    lines.forEach(function(line) {
+      var match, found = false;
+
+      // Collect all text as raw until outdent
+      if (block) {
+        match = block.check_indent(line);
+        if (match) {
+          block.contents.push(match[1] || "");
+          return;
+        } else {
+          output.push(block.process());
+          block = false;
+        }
+      }
+
+      matchers.forEach(function (matcher) {
+        if (!found) {
+          match = matcher.regexp(line);
+          if (match) {
+            block = {
+              contents: [],
+              matches: match,
+              check_indent: new RegExp("^(?:\\s*|" + match[1] + "  (.*))$"),
+              process: matcher.process,
+              render_contents: function () {
+                return compile(this. contents);
+              }
+            };
+            found = true;
+          }
+        }
+      });
+
+      // Match plain text
+      if (!found) {
+        output.push(function () {
+          // Escaped plain text
+          if (line[0] === '\\') {
+            return parse_interpol(line.substr(1, line.length));
+          }
+
+          // Plain variable data
+          if (line[0] === '=') {
+            line = line.substr(1, line.length).trim();
+            try {
+              return parse_interpol(JSON.parse(line));
+            } catch (e) {
+              return line;
+            }
+          }
+
+          // HTML escape variable data
+          if (line.substr(0, 2) === "&=") {
+            line = line.substr(2, line.length).trim();
+            try {
+              return JSON.stringify(html_escape(JSON.parse(line)));
+            } catch (e2) {
+              return 'html_escape(' + line + ')';
+            }
+          }
+
+          // Plain text
+          return parse_interpol(line);
+        }());
+      }
+
+    });
+    if (block) {
+      output.push(block.process());
+    }
+    return output.filter(function (part) { return part && part.length > 0}).join(" +\n");
+  };
+
+  function optimize(js) {
+    var new_js = [], buffer = [], part, end;
+
+    function flush() {
+      if (buffer.length > 0) {
+        new_js.push(JSON.stringify(buffer.join("")) + end);
+        buffer = [];
+      }
+    }
+    js.split("\n").forEach(function (line) {
+      part = line.match(/^(\".*\")(\s*\+\s*)?$/);
+      if (!part) {
+        flush();
+        new_js.push(line);
+        return;
+      }
+      end = part[2] || "";
+      part = part[1];
+      try {
+        buffer.push(JSON.parse(part));
+      } catch (e) {
+        flush();
+        new_js.push(line);
+      }
+    });
+    flush();
+    return new_js.join("\n");
+  };
+
+  function Haml(haml) {
+    var js = optimize(compile(haml));
+    return new Function("locals",
+      html_escape + "\n" +
+      "with(locals || {}) {\n" +
+      "  try {\n" +
+      "    return (" + js + ");\n" +
+      "  } catch (e) {\n" +
+      "    return \"\\n<pre class='error'>\" + html_escape(e.stack) + \"</pre>\\n\";\n" +
+      "  }\n" +
+      "}");
+  }
+
+
+  Sammy = Sammy || {};
+
+  // <tt>Sammy.Haml</tt> provides a quick way of using haml style templates in your app.
+  // The plugin itself includes the haml-js library created by Tim Caswell at
+  // at http://github.com/creationix/haml-js
+  //
+  // Haml is an alternative HTML syntax that is really great for describing
+  // the structure of HTML documents.
+  //
+  // By default using Sammy.Haml in your app adds the <tt>haml()</tt> method to the EventContext
+  // prototype. However, just like <tt>Sammy.Template</tt> you can change the default name of the method
+  // by passing a second argument (e.g. you could use the hml() as the method alias so that all the template
+  // files could be in the form file.hml instead of file.haml)
+  //
+  // ### Example
+  //
+  // The template (mytemplate.haml):
+  //
+  //       %h1&= title
+  //
+  //       Hey, #{name}! Welcome to Haml!
+  //
+  // The app:
+  //
+  //       var $.app = $.sammy(function() {
+  //         // include the plugin
+  //         this.use(Sammy.Haml);
+  //
+  //         this.get('#/hello/:name', function() {
+  //           // set local vars
+  //           this.title = 'Hello!'
+  //           this.name = this.params.name;
+  //           // render the template and pass it through haml
+  //           this.partial('mytemplate.haml');
+  //         });
+  //
+  //       });
+  //
+  // If I go to #/hello/AQ in the browser, Sammy will render this to the <tt>body</tt>:
+  //
+  //       <h1>Hello!</h1>
+  //
+  //       Hey, AQ! Welcome to HAML!
+  //
+  // Note: You dont have to include the haml.js file on top of the plugin as the plugin
+  // includes the full source.
+  //
+  Sammy.Haml = function(app, method_alias) {
+    app.use(Sammy.JSON);
+    
+    var haml_cache = {};
+    // *Helper* Uses haml-js to parse a template and interpolate and work with the passed data
+    //
+    // ### Arguments
+    //
+    // * `template` A String template.
+    // * `data` An Object containing the replacement values for the template.
+    //   data is extended with the <tt>EventContext</tt> allowing you to call its methods within the template.
+    //
+    var haml = function(template, data, name) {
+      // use name for caching
+      if (typeof name == 'undefined') name = template;
+      var fn = haml_cache[name];
+      if (!fn) {
+        fn = haml_cache[name] = Haml(template);
+      }
+      return fn($.extend({}, this, data));
+    };
+
+    // set the default method name/extension
+    if (!method_alias) method_alias = 'haml';
+    app.helper(method_alias, haml);
+
+  };
+
+})(jQuery);
+(function($) {
+  
+  var main_controller = $.sammy(function() {
+	   
+	  this.use(Sammy.Haml, 'haml');
+	  var assets = {}
+	  
+	  this.swap = function(content) {
+      $('#main').html(content).find('img').hide();
+      $('img').load(function(){
+        $(this).fadeIn('slow');
+      });
+    };
+     
+	  this.get('#/', function(context) {
+	    data = {};
+	    Site.get_keys(assets);
+	    data.keys = keys;
+	    data.assets = assets;
+  	  context.partial('/javascripts/views/thumbnails.haml', data);
+    });
+     
+    this.get('#/months/:name', function(context) {
+      // This way it doesn't touch the application, but grabs all the data
+      // from the page and uses haml to replace it
+      var name = this.params['name'];      
+      var data = assets[name];
+      context.partial('/javascripts/views/display.haml', data);
+      pre_load_images(assets[name].next_path, assets[name].previous_path);
+    });
+    
+    this.bind('run', function() {
+      var context = this;
+      // Site.sammify_links();
+      $('#main img').hide();
+      Site.fill_image_array(assets);
+    });
+
+  });
+  
+  $(function() {
+    main_controller.run('#/');
+  });
+  
+})(jQuery);
+var Site = {
+  // sammify_links: function(){
+  //   $('a.sammy').each(function(){
+  //     var path = $(this).attr('href');
+  //     $(this).attr('href','#' + path);
+  //   });
+  // },
+  // load_images: function(results){
+  //   $('#content').html(results).find('img').hide();
+  //   $('img').load(function(){
+  //     $(this).fadeIn('slow');
+  //   });
+  //  // Site.sammify_links();
+  // }, 
+  pre_load_images: function() {
+    var args_len = arguments.length;
+    for (var i = args_len; i--;) {
+      var cache_image = document.createElement('img');
+      cache_image.src = arguments[i];
+      cache.push(cacheImage);
+    }
+  },
+  fill_image_array: function(assets){
+    $('.thumbnail').each(function(){
+      var asset = $(this)
+      var name = asset.attr('id');
+      var thumbnail = asset.find('img').attr('src');
+      var path = thumbnail.replace('thumbnails','display');
+      var title = asset.find('a').attr('title');
+      var next = asset.next();
+      var next_name = next.attr('id') || '';
+      var next_path = next.length > 0 ? next.find('img').attr('src').replace('thumbnails','display') : '';
+      var previous = asset.prev();
+      var previous_name = previous.attr('id') || '';
+      var previous_path = previous.length > 0 ? previous.find('img').attr('src').replace('thumbnails','display') : '';
+      assets[name] = { 
+        'name' : name, 
+        'path' : path, 
+        'thumbnail' : thumbnail,
+        'title' : title, 
+        'next' : next_name, 
+        'next_path' : next_path,
+        'previous': previous_name,
+        'previous_path': next_path
+      };
+    });
+  },
+  get_keys: function(assets){
+    keys = [];
+    for(key in assets) keys.push(key);
+  }
+}

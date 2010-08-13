@@ -8,29 +8,7 @@ class Main
     response['Cache-Control'] = 'max-age=600, public'
     @months = Month.all
     haml :'pages/home'
-  end  
-  
-  get '/index.js' do
-    response['Cache-Control'] = 'max-age=600, public'
-    @months = Month.all
-    haml :'pages/home', :layout => false
-  end  
-  
-  get '/months/:name.js' do
-    response['Cache-Control'] = 'max-age=600, public'
-    @months = Month.all
-    @month = Month.find_by_name(params[:name])
-    @next_month = @months[@month.id + 1]
-    @previous_month = @months[@month.id - 1]
-
-    unless @month.nil?
-      @page_title = @month.title
-      haml :'pages/month', :layout => false
-    else
-      @path = params[:name]
-      haml :'pages/404', :layout => false 
-    end
-  end 
+  end   
   
   get '/months/:name' do
     response['Cache-Control'] = 'max-age=600, public'
