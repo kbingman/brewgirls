@@ -35,7 +35,7 @@ var Site = {
         'next' : next_name, 
         'next_path' : next_path,
         'previous': previous_name,
-        'previous_path': next_path
+        'previous_path': previous_path
       };
     });
   },
