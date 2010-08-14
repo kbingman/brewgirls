@@ -1,9 +1,5 @@
 class Main  
-  
-  before do 
-    
-  end
-  
+
   get '/' do
     response['Cache-Control'] = 'max-age=600, public'
     @months = Month.all

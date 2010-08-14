@@ -28,11 +28,10 @@
       context.partial('/javascripts/views/display.haml', data);
       // Preloads the next and previous images
       Site.pre_load_images(assets[name].next_path, assets[name].previous_path);
-      
     });
     
     this.bind('run', function(context) {
-      $('#main img').hide();
+      $('.fade img').hide();
       Site.fill_image_array(assets);
     });
 

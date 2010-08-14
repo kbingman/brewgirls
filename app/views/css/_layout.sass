@@ -14,11 +14,11 @@
     :top 12px
     :left 16px
     :margin 0
-    :color #999
-    :font-family "ChaletLondonNineteenSixty", "HelveticaNeue-Light", helvetica, arial, sans-serif
+    :color #777
+    :font-family "ChaletParisNineteenSixty", "HelveticaNeue-Light", helvetica, arial, sans-serif
   h1#title
     :position absolute
-    :top 24px
+    :top 27px
     :left 12px
     :color #ccc
     :font-size 4em
@@ -47,17 +47,25 @@
   :color #ccc
   :min-height 462px
   h2, h3 
-    :font-family "ChaletLondonNineteenSixty", "HelveticaNeue-Light", helvetica, arial, sans-serif
+    :font-family "ChaletParisNineteenSixty", "HelveticaNeue-Light", helvetica, arial, sans-serif
   
-#main
+#main, #root
   :width 504px
   :float left
   .image
     :min-height 379px
+  .info
+    h3
+      :margin 4px 0
+      :float left
+    .links
+      :float right
+      :margin 4px 6px 0 0
   
 #sidebar
   :width 408px
   :float right
+  :text-shadow 0 0 0 #111
   
 #footer
   :clear both
@@ -72,5 +80,6 @@
     :margin-left 1em
   p 
     :margin 0
-
+.hide 
+  :display none
     

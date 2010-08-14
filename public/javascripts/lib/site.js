@@ -5,6 +5,17 @@ var Site = {
   //     $(this).attr('href','#' + path);
   //   });
   // },
+  image_hover: function(images) {
+    var initial_opacity = '0.6';
+    var end_opacity = '1.0';
+    
+    $(images).css({'opacity':initial_opacity});
+    $(images).hover(function(){
+	    $(this).animate({'opacity':end_opacity}, 'fast');
+    }, function(){
+	    $(this).animate({'opacity':initial_opacity}, 'fast');
+    });
+  },
   pre_load_images: function() {
     var cache = [];
     var args_len = arguments.length;

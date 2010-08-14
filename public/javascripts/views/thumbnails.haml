@@ -2,5 +2,7 @@
   %ul
     :each key in keys
       %li.thumbnail{ id: assets[key].name }
-        %a.sammy{ href: '#/months/' + assets[key].name, title: assets[key].title }
+        %a{ href: '#/months/' + assets[key].name }
           %img{ src: assets[key].thumbnail, alt: assets[key].name }
+:javascript
+  Site.image_hover('.thumbnail img');

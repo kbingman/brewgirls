@@ -1,15 +1,17 @@
 .image
-  %img{ src: path, alt: name }
+  %a.index{ href: '#/'  }
+    %img{ src: path, alt: name }
 .info
   %h3&= title
-  :if previous
-    %a.previous{ href: '#/months/' + previous  } Previous
-  :if !previous
-    Previous
-   | 
-  %a.index{ href: '#/'  } Back to Index
-   | 
-  :if next
-    %a.index{ href: '#/months/' + next  } Next
-  :if !next
-    Next
+  .links
+    :if previous
+      %a.previous{ href: '#/months/' + previous  } Previous
+    :if !previous
+      Previous
+     | 
+    %a.index{ href: '#/'  } Back to Index
+     | 
+    :if next
+      %a.index{ href: '#/months/' + next  } Next
+    :if !next
+      Next
