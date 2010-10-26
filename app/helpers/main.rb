@@ -9,7 +9,8 @@ class Main
     #   def format_date(date, format = "%d/%m/%Y")
     #     date.strftime(format)
     #   end
-
+    #
+    
     # Generate HAML and escape HTML by default.
     def haml(template, options = {}, locals = {})
       options[:escape_html] = true unless options.include?(:escape_html)    
